@@ -395,7 +395,7 @@ impl Ctx {
             button: banner.button.clone().into(),
             button_bg: color(banner.button_bg.or(Some([255, 255, 0]))),
             button_fg: color(banner.button_fg.or(Some([0, 0, 0]))),
-            ink: if self.st.borrow().dark { Color::from_rgb_u8(255, 255, 255) } else { color(banner.text.or(Some([0, 0, 0]))) },
+            ink: color(banner.text.or(Some([0, 0, 0]))),
             ad: banner.ad,
             ..Default::default()
         };

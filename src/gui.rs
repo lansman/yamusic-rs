@@ -23,7 +23,6 @@ use std::time::{Duration, Instant};
 
 struct State {
     cfg: Config,
-    dark: bool,
     uid: String,
     /// Пока пользователь ничего не включил, плеер показывается пустым — как в официальном приложении.
     started: bool,
@@ -423,7 +422,6 @@ impl Ctx {
         }
         app.set_can_back(!self.st.borrow().history.is_empty());
         app.set_can_forward(!self.st.borrow().forward.is_empty());
-        ui.global::<Theme>().set_dark(page == Page::Wave || self.st.borrow().dark);
         match page {
             Page::List => {
                 if let Some(k) = key {
@@ -1517,22 +1515,69 @@ fn set_icons(ui: &AppWindow, sprite: &Sprite) {
     icons.set_upload(get("upload_xxs"));
 }
 
-pub fn run(start_hidden: bool) -> Result<(), slint::PlatformError> {
-    let cfg = Config::load();
-    crate::api::set_lang(&cfg.lang);
-    crate::i18n::set_lang(&cfg.lang);
-    let dark = match cfg.theme.as_str() {
+fn apply_theme(ui: &AppWindow, mode: &str) {
+    let dark = match mode {
         "dark" => true,
         "light" => false,
         _ => !sys::system_light_theme(),
     };
+    ui.global::<Theme>().set_dark(dark);
+}
+
+#[cfg(all(test, windows))]
+#[test]
+fn selected_theme_survives_navigation_and_playback_views() {
+    slint::BackendSelector::new().backend_name("winit".into()).renderer_name("skia-software".into()).select().unwrap();
+    let ui = AppWindow::new().unwrap();
+    let app = ui.global::<App>();
+    app.set_motion(false);
+    ui.window().set_size(slint::PhysicalSize::new(1280, 800));
+    let idle_stops = app.get_vibe_stops();
+    let mut stops = vec![Color::from_rgb_u8(40, 30, 50); 16];
+    stops[0] = Color::from_rgb_u8(60, 25, 50);
+    let playing_stops = ModelRc::from(Rc::new(VecModel::from(stops)));
+
+    let assert_backdrop = |dark| {
+        let frame = ui.window().take_snapshot().unwrap();
+        let pixel = frame.as_slice()[frame.width() as usize * 4 + 4];
+        let matches_mode = if dark { pixel.r < 70 && pixel.g < 70 && pixel.b < 100 } else { pixel.r > 210 && pixel.g > 210 && pixel.b > 210 };
+        assert!(matches_mode, "wrong backdrop for dark={dark}: {}, {}, {}", pixel.r, pixel.g, pixel.b);
+    };
+
+    for (mode, dark) in [("light", false), ("dark", true), ("system", !sys::system_light_theme())] {
+        apply_theme(&ui, mode);
+        assert_eq!(ui.global::<Theme>().get_dark(), dark);
+        app.set_page(Page::Wave);
+        assert_backdrop(dark);
+        app.set_vibe_stops(playing_stops.clone());
+        assert_backdrop(dark);
+        app.set_vibe_stops(idle_stops.clone());
+        app.set_page(Page::Search);
+        assert_backdrop(dark);
+        app.set_page(Page::Settings);
+        assert_backdrop(dark);
+        app.set_has_track(true);
+        app.set_fullscreen(true);
+        assert_backdrop(dark);
+        app.set_fullscreen(false);
+        app.set_mini(true);
+        assert_backdrop(dark);
+        app.set_mini(false);
+        app.set_has_track(false);
+    }
+}
+
+pub fn run(start_hidden: bool) -> Result<(), slint::PlatformError> {
+    let cfg = Config::load();
+    crate::api::set_lang(&cfg.lang);
+    crate::i18n::set_lang(&cfg.lang);
     let assets = load_assets();
     if assets.is_none() {
         log("шрифты и иконки недоступны — нет ни оригинала, ни сети");
     }
 
     let ui = AppWindow::new()?;
-    ui.global::<Theme>().set_dark(true);
+    apply_theme(&ui, &cfg.theme);
     let lite = cfg.mode == "lite";
     apply_mode(&ui, lite);
     if let Some(sprite) = &assets {
@@ -1593,7 +1638,6 @@ pub fn run(start_hidden: bool) -> Result<(), slint::PlatformError> {
         tracks,
         st: RefCell::new(State {
             cfg,
-            dark,
             uid: String::new(),
             started: false,
             wheel: Vec::new(),
@@ -1995,16 +2039,9 @@ pub fn run(start_hidden: bool) -> Result<(), slint::PlatformError> {
     #[cfg(windows)]
     theme_tick.start(TimerMode::Repeated, Duration::from_secs(2), || {
         with_ctx(|c| {
-            if c.st.borrow().cfg.theme != "system" {
-                return;
+            if c.st.borrow().cfg.theme == "system" {
+                apply_theme(&c.ui(), "system");
             }
-            let dark = !sys::system_light_theme();
-            if c.st.borrow().dark == dark {
-                return;
-            }
-            c.st.borrow_mut().dark = dark;
-            let ui = c.ui();
-            ui.global::<Theme>().set_dark(ui.global::<App>().get_page() == Page::Wave || dark);
         })
     });
 
@@ -2754,20 +2791,12 @@ impl Ctx {
             st.cfg.save();
             return;
         }
-        if let Some(mode) = id.strip_prefix("theme:") {
-            let dark = match mode {
-                "dark" => true,
-                "light" => false,
-                _ => !sys::system_light_theme(),
-            };
+        if let Some(mode @ ("system" | "light" | "dark")) = id.strip_prefix("theme:") {
             app.set_theme_mode(mode.into());
-            {
-                let mut st = self.st.borrow_mut();
-                st.dark = dark;
-                st.cfg.theme = mode.to_string();
-                st.cfg.save();
-            }
-            ui.global::<Theme>().set_dark(app.get_page() == Page::Wave || dark);
+            apply_theme(&ui, mode);
+            let mut st = self.st.borrow_mut();
+            st.cfg.theme = mode.to_string();
+            st.cfg.save();
             return;
         }
         if id == "explicit" {
@@ -3140,7 +3169,6 @@ impl Ctx {
     fn show_menu(&self, items: Vec<MenuEntry>, x: f32, y: f32, below: bool) {
         let ui = self.ui();
         let app = ui.global::<App>();
-        app.set_menu_themed(app.get_page() != Page::Wave && !app.get_fullscreen());
         app.set_menu_below(below);
         app.set_menu_items(ModelRc::from(Rc::new(VecModel::from(items))));
         app.set_menu_x(x);
@@ -3500,7 +3528,7 @@ impl Ctx {
         app.set_queue_title(title.into());
     }
 
-    /// Пятно и фон волны: в паузе — исходная картинка и чёрный фон, во время игры — цвета трека.
+    /// Передать палитру трека для фона «Моей волны». Цвета подстраиваются под выбранную тему в интерфейсе.
     fn sync_vibe(self: &Rc<Self>, playing: bool, color: Option<[u8; 3]>) {
         let key = (playing, if playing { color } else { None });
         if self.st.borrow().vibe_key == Some(key) && self.st.borrow().blob_src.is_some() {
@@ -3514,7 +3542,6 @@ impl Ctx {
         } else {
             vec![Color::from_rgb_u8(0, 0, 0); 16]
         };
-        app.set_vibe_edge(stops[11]);
         app.set_vibe_stops(ModelRc::from(Rc::new(VecModel::from(stops))));
         let Some(src) = self.st.borrow().blob_src.clone() else {
             if std::mem::replace(&mut self.st.borrow_mut().blob_requested, true) {

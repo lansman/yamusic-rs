@@ -1,6 +1,7 @@
 // «Моя волна»: колесо вайбов, кнопка запуска и фоновое пятно в цветах трека.
 
 import { Theme } from "theme.slint";
+import { PlaybackTheme } from "playback-theme.slint";
 import { Icons, Icon, Cover } from "widgets.slint";
 import { T, App, WheelEntry } from "state.slint";
 import { VolumePopup } from "popups.slint";
@@ -14,9 +15,9 @@ component GlassButton inherits Rectangle {
     width: 48px;
     height: 48px;
     border-radius: self.height / 2;
-    background: ta.has-hover && enabled ? #ffffff24 : #ffffff14;
+    background: ta.has-hover && enabled ? PlaybackTheme.overlay.with-alpha(0.14) : PlaybackTheme.overlay.with-alpha(0.08);
     animate background { duration: App.motion ? Theme.duration-transition : 0ms; }
-    Icon { source: icon; size: icon-size; colorize: enabled ? (ta.has-hover ? #ffffffe6 : #ffffffb3) : #ffffff14; }
+    Icon { source: icon; size: icon-size; colorize: enabled ? (ta.has-hover ? PlaybackTheme.ink : PlaybackTheme.muted) : PlaybackTheme.overlay.with-alpha(0.12); }
     ta := TouchArea {
         enabled: enabled;
         mouse-cursor: MouseCursor.pointer;
@@ -76,7 +77,7 @@ component WheelSlot inherits Rectangle {
             overflow: elide;
             font-size: Theme.font-size-label-m;
             font-weight: 500;
-            color: #ffffff.with-alpha(0.5 * root.alpha);
+            color: PlaybackTheme.muted.transparentize(1 - root.alpha);
         }
         Text {
             text: entry.name;
@@ -85,7 +86,7 @@ component WheelSlot inherits Rectangle {
             max-height: 40px;
             font-size: Theme.font-size-label-l;
             font-weight: 500;
-            color: #ffffff.with-alpha(root.alpha);
+            color: PlaybackTheme.ink.with-alpha(root.alpha);
         }
     }
     ta := TouchArea {
@@ -141,7 +142,7 @@ component FitTitle inherits Rectangle {
         font-family: "YS Music Headline";
         font-size: root.size;
         font-weight: 700;
-        color: #ffffff;
+        color: PlaybackTheme.ink;
     }
     line := Text { visible: false; text: root.text; font-family: "YS Music Headline"; font-weight: 700; font-size: root.size; }
     // Кликабельна только сама надпись, а не пустое место вокруг.
@@ -166,7 +167,7 @@ component ContextPill inherits Rectangle {
         x: (root.width - pill-w - 4px - btn) / 2;
         width: pill-w;
         border-radius: 24px;
-        background: pill-ta.pressed ? #00000099 : pill-ta.has-hover ? #00000066 : #0000004d;
+        background: pill-ta.pressed ? Theme.controls-color-secondary-default-pressed : pill-ta.has-hover ? Theme.controls-color-secondary-default-hovered : Theme.controls-color-secondary-default-enabled;
         animate background { duration: App.motion ? Theme.duration-transition : 0ms; }
         label := Text {
             x: 24px;
@@ -178,7 +179,7 @@ component ContextPill inherits Rectangle {
             font-family: "YS Music Headline";
             font-size: Theme.font-size-headline-xs;
             font-weight: 700;
-            color: Theme.logo-color-primary-player;
+            color: PlaybackTheme.accent;
         }
         pill-ta := TouchArea {
             mouse-cursor: MouseCursor.pointer;
@@ -189,9 +190,9 @@ component ContextPill inherits Rectangle {
         x: pill.x + pill.width + 4px;
         width: btn;
         border-radius: btn / 2;
-        background: x-ta.pressed ? #00000099 : x-ta.has-hover ? #00000066 : #0000004d;
+        background: x-ta.pressed ? Theme.controls-color-secondary-default-pressed : x-ta.has-hover ? Theme.controls-color-secondary-default-hovered : Theme.controls-color-secondary-default-enabled;
         animate background { duration: App.motion ? Theme.duration-transition : 0ms; }
-        Icon { source: Icons.close-small; size: 24px; colorize: x-ta.has-hover ? #ffffffe6 : #ffffff80; }
+        Icon { source: Icons.close-small; size: 24px; colorize: x-ta.has-hover ? PlaybackTheme.ink : PlaybackTheme.muted; }
         x-ta := TouchArea {
             mouse-cursor: MouseCursor.pointer;
             clicked => { root.reset(); }
@@ -226,7 +227,7 @@ export component WavePage inherits Rectangle {
         height: blob;
         source: App.blob;
         image-fit: contain;
-        opacity: 0.8;
+        opacity: Theme.dark ? 0.8 : 0.42;
     }
 
     // Колесо вайбов: бесконечная лента, крутится колёсиком мыши.
@@ -286,7 +287,7 @@ export component WavePage inherits Rectangle {
         font-family: "YS Music Headline";
         font-size: Theme.font-size-headline-s;
         font-weight: 700;
-        color: #ffff00;
+        color: PlaybackTheme.accent;
     }
     if App.has-track && App.wave-context: ContextPill {
         x: text-x;
@@ -306,7 +307,7 @@ export component WavePage inherits Rectangle {
         font-family: "YS Music Headline";
         font-size: 103px / App.ui-scale;
         font-weight: 700;
-        color: #ffffff;
+        color: PlaybackTheme.ink;
     }
 
     if !App.has-track: Rectangle {
@@ -315,13 +316,13 @@ export component WavePage inherits Rectangle {
         width: 64px;
         height: 64px;
         border-radius: 32px;
-        background: idle-ta.has-hover ? Theme.controls-color-primary-default-hovered : #ffff00;
+        background: idle-ta.has-hover ? Theme.controls-color-primary-default-hovered : Theme.controls-color-primary-default-enabled;
         animate background { duration: App.motion ? 150ms : 0ms; }
         Icon { source: Icons.play-big; size: 32px; colorize: #000; }
         idle-ta := TouchArea { mouse-cursor: MouseCursor.pointer; clicked => { App.play-pause(); } }
     }
-    if !App.has-track: Icon { x: cx - 76px - 12px; y: 600px + dp; source: Icons.prev; size: 24px; colorize: #ffffff14; }
-    if !App.has-track: Icon { x: cx - 76px + 140px; y: 600px + dp; source: Icons.next; size: 24px; colorize: #ffffff14; }
+    if !App.has-track: Icon { x: cx - 76px - 12px; y: 600px + dp; source: Icons.prev; size: 24px; colorize: PlaybackTheme.overlay.with-alpha(0.08); }
+    if !App.has-track: Icon { x: cx - 76px + 140px; y: 600px + dp; source: Icons.next; size: 24px; colorize: PlaybackTheme.overlay.with-alpha(0.08); }
 
     // Исполнитель крупно: клик открывает его страницу.
     if App.has-track && !paused: FitTitle {
@@ -379,14 +380,14 @@ export component WavePage inherits Rectangle {
             width: min(346px, text-w - 4 * 52px);
             height: 64px;
             border-radius: 32px;
-            background: #ffffff14;
+            background: PlaybackTheme.overlay.with-alpha(0.08);
             Rectangle {
                 border-radius: 32px;
                 clip: true;
                 Rectangle {
                     x: 0;
                     width: parent.width * root.shown;
-                    background: #ffffff14;
+                    background: PlaybackTheme.overlay.with-alpha(0.08);
                 }
             }
             Text {
@@ -397,7 +398,7 @@ export component WavePage inherits Rectangle {
                 font-family: "YS Music Headline";
                 font-size: Theme.font-size-headline-xs;
                 font-weight: 700;
-                color: #ffffffb3;
+                color: PlaybackTheme.muted;
             }
             pill-ta := TouchArea {
                 mouse-cursor: MouseCursor.pointer;
@@ -424,12 +425,12 @@ export component WavePage inherits Rectangle {
                 width: tip.preferred-width + 16px;
                 height: 24px;
                 border-radius: 12px;
-                background: #000000b3;
+                background: Theme.background-color-primary-enabled-popover;
                 tip := Text {
                     text: App.format-time(at * App.duration) + " / " + App.format-time(App.duration);
                     font-size: Theme.font-size-label-xs;
                     font-weight: 500;
-                    color: #ffffffe6;
+                    color: PlaybackTheme.ink;
                 }
             }
         }
@@ -449,21 +450,21 @@ export component WavePage inherits Rectangle {
         spacing: 32px;
         Rectangle {
             width: 24px;
-            Icon { source: Icons.prev; size: 24px; colorize: prev-ta.has-hover ? #ffffffe6 : #ffffff80; }
+            Icon { source: Icons.prev; size: 24px; colorize: prev-ta.has-hover ? PlaybackTheme.ink : PlaybackTheme.muted; }
             prev-ta := TouchArea { mouse-cursor: MouseCursor.pointer; clicked => { App.prev(); } }
         }
         Rectangle {
             width: 64px;
             height: 64px;
             border-radius: 32px;
-            background: play-ta.has-hover ? Theme.controls-color-primary-default-hovered : #ffff00;
+            background: play-ta.has-hover ? Theme.controls-color-primary-default-hovered : Theme.controls-color-primary-default-enabled;
             animate background { duration: App.motion ? 150ms : 0ms; }
             Icon { source: App.playing ? Icons.pause-big : Icons.play-big; size: 32px; colorize: #000; }
             play-ta := TouchArea { mouse-cursor: MouseCursor.pointer; clicked => { App.play-pause(); } }
         }
         Rectangle {
             width: 24px;
-            Icon { source: Icons.next; size: 24px; colorize: next-ta.has-hover ? #ffffffe6 : #ffffff80; }
+            Icon { source: Icons.next; size: 24px; colorize: next-ta.has-hover ? PlaybackTheme.ink : PlaybackTheme.muted; }
             next-ta := TouchArea { mouse-cursor: MouseCursor.pointer; clicked => { App.next(); } }
         }
     }
@@ -476,12 +477,12 @@ export component WavePage inherits Rectangle {
         width: ver.preferred-width + 16px;
         height: 26px;
         border-radius: 16px;
-        background: #ffffff14;
+        background: PlaybackTheme.overlay.with-alpha(0.08);
         ver := Text {
             text: App.version;
             font-size: Theme.font-size-label-s;
             font-weight: 500;
-            color: #ffffff80;
+            color: PlaybackTheme.muted;
         }
     }
 }

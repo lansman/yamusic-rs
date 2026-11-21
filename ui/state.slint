@@ -265,7 +265,6 @@ export global App {
     // Моя волна: пятно, фон из палитры трека.
     in property <image> blob;
     in property <[color]> vibe-stops: [#000, #000, #000, #000, #000, #000, #000, #000, #000, #000, #000, #000, #000, #000, #000, #000];
-    in property <color> vibe-edge: #000;
 
     // Текущий трек: подробности для плеера.
     in property <string> track-version;
@@ -307,7 +306,6 @@ export global App {
     in-out property <int> submenu-open: -1;
     in property <[string]> menu-playlists;
     // Меню в теме приложения (кроме волны и плеера на весь экран) и под кнопкой, а не над ней.
-    in property <bool> menu-themed;
     in property <bool> menu-below;
 
     // Настройки звука: качество и эквалайзер.

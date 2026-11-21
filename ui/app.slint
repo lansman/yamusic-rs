@@ -1,6 +1,7 @@
 // Главное окно: своя рамка, навбар, страницы, нижний плеер и всплывающие слои поверх.
 
 import { Theme } from "theme.slint";
+import { PlaybackTheme } from "playback-theme.slint";
 import { Icons, Icon, IconButton, CircleButton, PillButton, Cover, Shimmer, Fade } from "widgets.slint";
 import { Navbar } from "navbar.slint";
 import { PlayerBar, MiniPlayer } from "playerbar.slint";
@@ -92,15 +93,18 @@ export component AppWindow inherits Window {
     property <length> pad-r: 12px;
     property <length> bar-h: new-vibe ? 0px : 80px;
 
-    // Фон «Моей волны»: 16 ступеней палитры трека справа налево, как у оригинала.
-    // На паузе все ступени чёрные: сплошная заливка вместо градиента на всё окно.
+    // Подстраиваем градиент обложки под тему окна, чтобы пункты меню оставались читаемыми.
     if new-vibe: Rectangle {
         property <bool> flat: App.vibe-stops[0] == App.vibe-stops[15] && App.vibe-stops[0] == App.vibe-stops[7];
-        background: flat ? App.vibe-stops[0] : @linear-gradient(270deg,
-            App.vibe-stops[0] 0%, App.vibe-stops[1] 10%, App.vibe-stops[2] 19%, App.vibe-stops[3] 25%,
-            App.vibe-stops[4] 30%, App.vibe-stops[5] 34%, App.vibe-stops[6] 37%, App.vibe-stops[7] 40%,
-            App.vibe-stops[8] 42%, App.vibe-stops[9] 44%, App.vibe-stops[10] 47%, App.vibe-stops[11] 50%,
-            App.vibe-stops[12] 54%, App.vibe-stops[13] 60%, App.vibe-stops[14] 67%, App.vibe-stops[15] 75%);
+        background: flat ? Theme.background-color-primary-enabled-basic : @linear-gradient(270deg,
+            PlaybackTheme.wave-stop(App.vibe-stops[0]) 0%, PlaybackTheme.wave-stop(App.vibe-stops[1]) 10%,
+            PlaybackTheme.wave-stop(App.vibe-stops[2]) 19%, PlaybackTheme.wave-stop(App.vibe-stops[3]) 25%,
+            PlaybackTheme.wave-stop(App.vibe-stops[4]) 30%, PlaybackTheme.wave-stop(App.vibe-stops[5]) 34%,
+            PlaybackTheme.wave-stop(App.vibe-stops[6]) 37%, PlaybackTheme.wave-stop(App.vibe-stops[7]) 40%,
+            PlaybackTheme.wave-stop(App.vibe-stops[8]) 42%, PlaybackTheme.wave-stop(App.vibe-stops[9]) 44%,
+            PlaybackTheme.wave-stop(App.vibe-stops[10]) 47%, PlaybackTheme.wave-stop(App.vibe-stops[11]) 50%,
+            PlaybackTheme.wave-stop(App.vibe-stops[12]) 54%, PlaybackTheme.wave-stop(App.vibe-stops[13]) 60%,
+            PlaybackTheme.wave-stop(App.vibe-stops[14]) 67%, PlaybackTheme.wave-stop(App.vibe-stops[15]) 75%);
     }
 
     navbar := Navbar {
@@ -378,14 +382,14 @@ export component AppWindow inherits Window {
         width: hint-label.preferred-width + 24px;
         height: 32px;
         border-radius: Theme.radius-size-m;
-        background: Theme.dark ? #262626 : #1a1a1a;
+        background: Theme.background-color-primary-enabled-popover;
         drop-shadow-blur: 8px;
         drop-shadow-color: #0000003d;
         hint-label := Text {
             text: App.hint-text;
             font-size: Theme.font-size-label-m;
             font-weight: 500;
-            color: #ffffffe6;
+            color: Theme.controls-color-primary-text-enabled-variant;
         }
     }
 

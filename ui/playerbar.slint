@@ -1,6 +1,7 @@
 // Нижний плеер.
 
 import { Theme } from "theme.slint";
+import { PlaybackTheme } from "playback-theme.slint";
 import { Icons, Icon, Cover, ArtistLinks, ExplicitMark } from "widgets.slint";
 import { App } from "state.slint";
 import { VolumePopup } from "popups.slint";
@@ -10,9 +11,9 @@ component BarButton inherits Rectangle {
     in property <length> icon-size: 24px;
     in property <bool> enabled: true;
     in property <bool> active;
-    in property <brush> ink: #ffffff80;
-    in property <brush> ink-hover: #ffffffe6;
-    in property <brush> ink-off: #ffffff14;
+    in property <brush> ink: PlaybackTheme.muted;
+    in property <brush> ink-hover: PlaybackTheme.ink;
+    in property <brush> ink-off: PlaybackTheme.overlay.with-alpha(0.08);
     out property <bool> hovered: ta.has-hover;
     callback clicked;
     width: 32px;
@@ -21,7 +22,7 @@ component BarButton inherits Rectangle {
     Icon {
         source: icon;
         size: icon-size;
-        colorize: !enabled ? ink-off : active ? Theme.controls-color-primary-default-enabled : ta.has-hover ? ink-hover : ink;
+        colorize: !enabled ? ink-off : active ? PlaybackTheme.accent : ta.has-hover ? ink-hover : ink;
         animate colorize { duration: App.motion ? Theme.duration-transition : 0ms; }
     }
     ta := TouchArea {
@@ -36,8 +37,8 @@ export component PlayerBar inherits Rectangle {
     property <float> progress: App.duration > 0 ? App.position / App.duration : 0;
     property <float> drag-progress: -1;
     property <float> shown: drag-progress >= 0 ? drag-progress : progress;
-    property <brush> ink: #ffffff80;
-    property <brush> ink-off: #ffffff14;
+    property <brush> ink: PlaybackTheme.muted;
+    property <brush> ink-off: PlaybackTheme.overlay.with-alpha(0.08);
     property <bool> on: App.has-track;
     property <length> c: self.width / 2;
     property <bool> vol-open: vol-btn.hovered || vol-pop.hovered;
@@ -49,8 +50,8 @@ export component PlayerBar inherits Rectangle {
     inner := Rectangle {
         border-radius: Theme.radius-size-l;
         border-width: 1px;
-        border-color: #ffffff0a;
-        background: on ? App.tint : Theme.background-color-primary-enabled-player;
+        border-color: PlaybackTheme.overlay.with-alpha(0.04);
+        background: on ? PlaybackTheme.tint : PlaybackTheme.idle;
         clip: true;
         animate background { duration: App.motion ? Theme.duration-transition : 0ms; }
 
@@ -58,13 +59,13 @@ export component PlayerBar inherits Rectangle {
             x: 0;
             width: parent.width * shown;
             height: parent.height;
-            background: #ffffff0d;
+            background: PlaybackTheme.overlay.with-alpha(0.05);
         }
         // Полоса прогресса сверху: видна при наведении на плеер.
         if show-progress: Rectangle {
             y: 0;
             height: 4px;
-            background: #ffffff1f;
+            background: PlaybackTheme.overlay.with-alpha(0.12);
             Rectangle {
                 x: 0;
                 width: parent.width * shown;
@@ -86,7 +87,7 @@ export component PlayerBar inherits Rectangle {
                 width: 64px;
                 height: 64px;
                 radius: Theme.radius-size-s;
-                background: #ffffff14;
+                background: PlaybackTheme.overlay.with-alpha(0.08);
                 source: App.cover;
                 if cover-ta.has-hover: Rectangle {
                     background: #00000033;
@@ -119,7 +120,7 @@ export component PlayerBar inherits Rectangle {
                         vertical-alignment: center;
                         font-size: Theme.font-size-label-m;
                         font-weight: 500;
-                        color: #ffffff;
+                        color: PlaybackTheme.ink;
             if title-ta.has-hover: Rectangle {
                 x: 0;
                 y: (parent.height + parent.font-size) / 2 + 1px;
@@ -139,16 +140,16 @@ export component PlayerBar inherits Rectangle {
                         vertical-alignment: center;
                         font-size: Theme.font-size-label-m;
                         font-weight: 500;
-                        color: #ffffff80;
+                        color: PlaybackTheme.muted;
                     }
-                    if App.track-explicit: ExplicitMark { y: 1px; ink: #ffffff80; }
+                    if App.track-explicit: ExplicitMark { y: 1px; ink: PlaybackTheme.muted; }
                     more := Rectangle {
                         width: 36px;
                         height: 20px;
                         Icon {
                             source: Icons.more-small;
                             size: 20px;
-                            colorize: more-ta.has-hover || App.menu-open ? #ffffffe6 : #ffffff80;
+                            colorize: more-ta.has-hover || App.menu-open ? PlaybackTheme.ink : PlaybackTheme.muted;
                         }
                         more-ta := TouchArea {
                             mouse-cursor: MouseCursor.pointer;
@@ -165,8 +166,8 @@ export component PlayerBar inherits Rectangle {
                 width: min(self.content-width, c - 188px - self.x - 16px);
                 height: 20px;
                 names: App.artist-list;
-                ink: #ffffff80;
-                ink-hover: #ffffffe6;
+                ink: PlaybackTheme.muted;
+                ink-hover: PlaybackTheme.ink;
                 clicked(i) => { App.open-current-artist(i); }
             }
 
@@ -181,7 +182,7 @@ export component PlayerBar inherits Rectangle {
                 Icon {
                     source: App.playing ? Icons.pause-filled : Icons.play-filled;
                     size: 40px;
-                    colorize: play-ta.has-hover ? Theme.controls-color-primary-default-hovered : Theme.controls-color-primary-default-enabled;
+                    colorize: play-ta.has-hover ? PlaybackTheme.ink : PlaybackTheme.accent;
                 }
                 play-ta := TouchArea { mouse-cursor: MouseCursor.pointer; clicked => { App.play-pause(); } }
             }
@@ -197,7 +198,7 @@ export component PlayerBar inherits Rectangle {
                 y: 24px;
                 icon: App.volume <= 0 ? Icons.volume-off : Icons.volume;
                 active: false;
-                ink: vol-open ? #ffffffe6 : #ffffff80;
+                ink: vol-open ? PlaybackTheme.ink : PlaybackTheme.muted;
                 clicked => { App.toggle-mute(); }
             }
         }
@@ -244,12 +245,12 @@ export component PlayerBar inherits Rectangle {
         width: time.preferred-width + 16px;
         height: 24px;
         border-radius: 12px;
-        background: #000000b3;
+        background: Theme.background-color-primary-enabled-popover;
         time := Text {
             text: App.format-time(at * App.duration) + " / " + App.format-time(App.duration);
             font-size: Theme.font-size-label-xs;
             font-weight: 500;
-            color: #ffffffe6;
+            color: PlaybackTheme.ink;
         }
     }
 
@@ -264,7 +265,7 @@ export component PlayerBar inherits Rectangle {
 // двойной клик возвращает обычное окно.
 export component MiniPlayer inherits Rectangle {
     property <bool> on: App.has-track;
-    background: on ? App.tint : Theme.background-color-primary-enabled-player;
+    background: on ? PlaybackTheme.tint : PlaybackTheme.idle;
     animate background { duration: App.motion ? Theme.duration-transition : 0ms; }
 
     ta := TouchArea {
@@ -293,7 +294,7 @@ export component MiniPlayer inherits Rectangle {
             width: 64px;
             height: 64px;
             radius: Theme.radius-size-s;
-            background: #ffffff14;
+            background: PlaybackTheme.overlay.with-alpha(0.08);
             source: App.cover;
         }
         VerticalLayout {
@@ -306,13 +307,13 @@ export component MiniPlayer inherits Rectangle {
                 overflow: elide;
                 font-size: Theme.font-size-label-m;
                 font-weight: 500;
-                color: #ffffff;
+                color: PlaybackTheme.ink;
             }
             if on: Text {
                 text: App.artists;
                 overflow: elide;
                 font-size: Theme.font-size-label-m;
-                color: #ffffff80;
+                color: PlaybackTheme.muted;
             }
         }
 
@@ -325,7 +326,7 @@ export component MiniPlayer inherits Rectangle {
             Icon {
                 source: App.playing ? Icons.pause-filled : Icons.play-filled;
                 size: 40px;
-                colorize: play-ta.has-hover ? Theme.controls-color-primary-default-hovered : Theme.controls-color-primary-default-enabled;
+                colorize: play-ta.has-hover ? PlaybackTheme.ink : PlaybackTheme.accent;
             }
             play-ta := TouchArea { enabled: on; mouse-cursor: MouseCursor.pointer; clicked => { App.play-pause(); } }
         }
@@ -348,15 +349,15 @@ export component MiniPlayer inherits Rectangle {
             height: 24px;
             visible: ta.has-hover || vol-ta.pressed;
             property <float> v: max(0, min(1, App.volume));
-            Rectangle { y: 10px; height: 4px; border-radius: 2px; background: #ffffff33; }
-            Rectangle { x: 0; y: 10px; width: parent.width * v; height: 4px; border-radius: 2px; background: #ffffffcc; }
+            Rectangle { y: 10px; height: 4px; border-radius: 2px; background: PlaybackTheme.overlay.with-alpha(0.2); }
+            Rectangle { x: 0; y: 10px; width: parent.width * v; height: 4px; border-radius: 2px; background: PlaybackTheme.overlay.with-alpha(0.8); }
             Rectangle {
                 x: parent.width * v - 5px;
                 y: 7px;
                 width: 10px;
                 height: 10px;
                 border-radius: 5px;
-                background: vol-ta.has-hover || vol-ta.pressed ? Theme.controls-color-primary-default-enabled : #ffffff;
+                background: vol-ta.has-hover || vol-ta.pressed ? Theme.controls-color-primary-default-enabled : PlaybackTheme.ink;
             }
             vol-ta := TouchArea {
                 mouse-cursor: MouseCursor.pointer;

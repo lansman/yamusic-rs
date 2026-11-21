@@ -1,20 +1,21 @@
 // Всплывающие окна: громкость, меню трека, настройки звука и эквалайзер.
 
 import { Theme } from "theme.slint";
+import { PlaybackTheme } from "playback-theme.slint";
 import { Icons, Icon } from "widgets.slint";
 import { T, App, MenuEntry } from "state.slint";
 
 // Вертикальный ползунок громкости над кнопкой: 44×216, радиус 24.
 export component VolumePopup inherits Rectangle {
-    in property <brush> fill: #1a1a1a;
-    in property <brush> stroke: #4d4d4d;
+    in property <brush> fill: Theme.background-color-primary-enabled-popover;
+    in property <brush> stroke: Theme.controls-color-secondary-outline-enabled-stroke;
     // Вариант волны: полупрозрачный, толстая полоса без бегунка.
     in property <bool> glass;
     out property <bool> hovered: ta.has-hover || ta.pressed;
     width: 44px;
     height: glass ? 210px : 216px;
     border-radius: glass ? 22px : 24px;
-    background: glass ? #ffffff14 : fill;
+    background: glass ? PlaybackTheme.overlay.with-alpha(0.08) : fill;
     border-width: glass ? 0 : 1px;
     border-color: stroke;
 
@@ -29,7 +30,7 @@ export component VolumePopup inherits Rectangle {
         width: rail-w;
         height: rail-h;
         border-radius: rail-w / 2;
-        background: #ffffff1f;
+        background: PlaybackTheme.overlay.with-alpha(0.12);
     }
     Rectangle {
         x: (parent.width - rail-w) / 2;
@@ -37,7 +38,7 @@ export component VolumePopup inherits Rectangle {
         width: rail-w;
         height: rail-h * v;
         border-radius: rail-w / 2;
-        background: glass ? #ffffffcc : ta.has-hover || ta.pressed ? Theme.controls-color-primary-default-enabled : #ffffffcc;
+        background: !glass && (ta.has-hover || ta.pressed) ? PlaybackTheme.accent : PlaybackTheme.overlay.with-alpha(0.8);
         animate background { duration: App.motion ? 150ms : 0ms; }
     }
     if !glass: Rectangle {
@@ -46,7 +47,7 @@ export component VolumePopup inherits Rectangle {
         width: 12px;
         height: 12px;
         border-radius: 6px;
-        background: ta.has-hover || ta.pressed ? Theme.controls-color-primary-default-enabled : #ffffff;
+        background: ta.has-hover || ta.pressed ? PlaybackTheme.accent : PlaybackTheme.ink;
         animate background { duration: App.motion ? 150ms : 0ms; }
     }
     ta := TouchArea {
@@ -74,14 +75,13 @@ export component MenuRow inherits Rectangle {
     in property <bool> has-icon: true;
     in property <bool> submenu;
     in property <bool> active;
-    in property <bool> themed;
     callback clicked;
     callback hovered;
-    property <brush> ink: themed ? Theme.controls-color-primary-text-enabled : #ffffff80;
-    property <brush> ink-on: themed ? Theme.controls-color-primary-text-enabled-variant : #ffffffe6;
+    property <brush> ink: Theme.controls-color-primary-text-enabled;
+    property <brush> ink-on: Theme.controls-color-primary-text-enabled-variant;
     height: 36px;
     border-radius: Theme.radius-size-m;
-    background: ta.has-hover || active ? (themed ? Theme.surface-color-primary-enabled-list : #ffffff14) : transparent;
+    background: ta.has-hover || active ? Theme.surface-color-primary-enabled-list : transparent;
     animate background { duration: App.motion ? 150ms : 0ms; }
     if has-icon: Icon {
         x: 12px;
@@ -124,8 +124,8 @@ export component TrackMenu inherits Rectangle {
     property <length> my: App.menu-below
         ? (App.menu-y + 8px + h > root.height - 8px ? max(8px, App.menu-y - 48px - h) : App.menu-y + 8px)
         : App.menu-y - h - 8px < 8px ? min(App.menu-y + 28px, root.height - h - 8px) : App.menu-y - h - 8px;
-    property <brush> fill: App.menu-themed ? Theme.background-color-primary-enabled-popover : #1f1f1ff2;
-    property <color> shadow: App.menu-themed && !Theme.dark ? #00000029 : #0000007a;
+    property <brush> fill: Theme.background-color-primary-enabled-popover;
+    property <color> shadow: !Theme.dark ? #00000029 : #0000007a;
     property <string> sid: App.submenu-open >= 0 && App.submenu-open < App.menu-items.length ? App.menu-items[App.submenu-open].id : "";
     property <bool> share: sid == "share" || sid == "list-share";
 
@@ -164,7 +164,6 @@ export component TrackMenu inherits Rectangle {
             text: m.text;
             icon: m.icon;
             submenu: m.submenu;
-            themed: App.menu-themed;
             active: App.submenu-open == i;
             hovered => { App.submenu-open = m.submenu ? i : -1; }
             clicked => {
@@ -197,7 +196,6 @@ export component TrackMenu inherits Rectangle {
             width: parent.width - 16px;
             text: T.t("Скопировать ссылку");
             icon: Icons.m-link;
-            themed: App.menu-themed;
             clicked => { root.pick(root.sid + "-link"); }
         }
         if share: MenuRow {
@@ -206,7 +204,6 @@ export component TrackMenu inherits Rectangle {
             width: parent.width - 16px;
             text: T.t("HTML-код");
             icon: Icons.m-code;
-            themed: App.menu-themed;
             clicked => { root.pick(root.sid + "-html"); }
         }
         if !share: Flickable {
@@ -220,7 +217,6 @@ export component TrackMenu inherits Rectangle {
                 width: parent.width;
                 text: p;
                 has-icon: false;
-                themed: App.menu-themed;
                 clicked => {
                     App.menu-open = false;
                     App.submenu-open = -1;
@@ -502,7 +498,6 @@ export component SoundSettings inherits Rectangle {
                 y: i * 36px;
                 width: parent.width;
                 text: p;
-                themed: true;
                 has-icon: false;
                 active: i == App.eq-preset;
                 clicked => {

@@ -922,7 +922,7 @@ component Special inherits Rectangle {
         font-family: "YS Music Headline";
         font-size: 32px;
         font-weight: 900;
-        color: block.ink;
+        color: Theme.dark ? #ffffff : block.ink;
     }
     Text {
         x: 24px;
@@ -931,7 +931,7 @@ component Special inherits Rectangle {
         text: block.desc;
         font-size: 16px;
         font-weight: 500;
-        color: block.ink;
+        color: Theme.dark ? #ffffff : block.ink;
     }
     if block.button != "": Rectangle {
         x: 24px;

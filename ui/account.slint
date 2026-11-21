@@ -261,13 +261,13 @@ component SettingItem inherits Rectangle {
     }
 }
 
-// Вариант режима работы: кружок выбора, название и подпись.
+// Вариант настройки с необязательной подписью.
 component ModeOption inherits Rectangle {
     in property <string> title;
     in property <string> desc;
     in property <bool> selected;
     callback clicked;
-    height: 42px;
+    height: desc == "" ? 24px : 42px;
     Rectangle {
         x: 0;
         y: 2px;
@@ -290,7 +290,7 @@ component ModeOption inherits Rectangle {
         font-weight: 700;
         color: Theme.controls-color-primary-text-enabled-variant;
     }
-    Text {
+    if desc != "": Text {
         x: 32px;
         y: 24px;
         width: parent.width - 32px;
@@ -333,6 +333,20 @@ export component SettingsPage inherits Rectangle {
             width: 482px;
             spacing: 36px;
             alignment: start;
+            VerticalLayout {
+                spacing: 12px;
+                Text {
+                    height: 24px;
+                    text: T.t("Внешний вид");
+                    vertical-alignment: center;
+                    font-size: 16px;
+                    font-weight: 700;
+                    color: Theme.controls-color-primary-text-enabled-variant;
+                }
+                ModeOption { title: T.t("Как в системе"); selected: App.theme-mode != "light" && App.theme-mode != "dark"; clicked => { App.account-action("theme:system"); } }
+                ModeOption { title: T.t("Всегда светлый"); selected: App.theme-mode == "light"; clicked => { App.account-action("theme:light"); } }
+                ModeOption { title: T.t("Всегда тёмный"); selected: App.theme-mode == "dark"; clicked => { App.account-action("theme:dark"); } }
+            }
             SettingItem { title: T.t("Очистить память"); clicked => { App.setting("clear"); } }
             SettingItem {
                 title: T.t("Эквалайзер");

@@ -1,0 +1,15 @@
+import { App } from "state.slint";
+import { Theme } from "theme.slint";
+
+export global PlaybackTheme {
+    out property <color> ink: Theme.dark ? #ffffff : #1a1a1a;
+    out property <color> muted: Theme.dark ? #ffffff80 : #585858;
+    out property <color> overlay: Theme.dark ? #ffffff : #000000;
+    out property <color> accent: Theme.dark ? #ffff00 : #6b5700;
+    out property <color> tint: Theme.dark ? App.tint : #ffffff.mix(App.tint, 0.88);
+    out property <brush> idle: Theme.dark ? Theme.background-color-primary-enabled-player : #e6e6e6;
+
+    public pure function wave-stop(stop: color) -> color {
+        return Theme.dark ? stop : #f5f5f5.mix(stop, 0.92);
+    }
+}

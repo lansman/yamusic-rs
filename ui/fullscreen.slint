@@ -1,6 +1,7 @@
 // Полноэкранный плеер: обложка, очередь и синхронный текст песни.
 
 import { Theme } from "theme.slint";
+import { PlaybackTheme } from "playback-theme.slint";
 import { Icons, Icon, Cover, ArtistLinks, ExplicitMark } from "widgets.slint";
 import { T, App, TrackItem } from "state.slint";
 
@@ -30,7 +31,7 @@ component QueueRow inherits Rectangle {
     callback clicked;
     height: 56px;
     border-radius: Theme.radius-size-m;
-    background: ta.has-hover ? #ffffff0d : transparent;
+    background: ta.has-hover ? PlaybackTheme.overlay.with-alpha(0.05) : transparent;
     animate background { duration: App.motion ? 150ms : 0ms; }
     ta := TouchArea { mouse-cursor: MouseCursor.pointer; clicked => { root.clicked(); } }
     Cover {
@@ -62,16 +63,16 @@ component QueueRow inherits Rectangle {
             horizontal-stretch: 0;
             font-size: Theme.font-size-label-m;
             font-weight: 500;
-            color: #ffffff;
+            color: PlaybackTheme.ink;
         }
         if item.version != "": Text {
             text: item.version;
             horizontal-stretch: 0;
             font-size: Theme.font-size-label-m;
             font-weight: 500;
-            color: #ffffff80;
+            color: PlaybackTheme.muted;
         }
-        if item.explicit: ExplicitMark { y: -1px; ink: #ffffff80; }
+        if item.explicit: ExplicitMark { y: -1px; ink: PlaybackTheme.muted; }
         Rectangle { horizontal-stretch: 1; }
     }
     Text {
@@ -82,14 +83,14 @@ component QueueRow inherits Rectangle {
         overflow: elide;
         font-size: Theme.font-size-label-m;
         font-weight: 500;
-        color: #ffffff80;
+        color: PlaybackTheme.muted;
     }
     if current: Icon {
         x: parent.width - 92px;
         y: 18px;
         source: App.liked ? Icons.liked-small : Icons.like-small;
         size: 20px;
-        colorize: #ffffff80;
+        colorize: PlaybackTheme.muted;
         TouchArea { mouse-cursor: MouseCursor.pointer; clicked => { App.like(); } }
     }
     Text {
@@ -98,7 +99,7 @@ component QueueRow inherits Rectangle {
         text: item.duration;
         font-size: Theme.font-size-label-m;
         font-weight: 500;
-        color: #ffffff80;
+        color: PlaybackTheme.muted;
     }
 }
 
@@ -189,7 +190,7 @@ component Poster inherits Rectangle {
             vertical-alignment: center;
             font-size: Theme.font-size-label-l;
             font-weight: 500;
-            color: #ffffff;
+            color: PlaybackTheme.ink;
             if title-ta.has-hover: Rectangle {
                 x: 0;
                 y: (parent.height + parent.font-size) / 2 + 1px;
@@ -199,7 +200,7 @@ component Poster inherits Rectangle {
             }
             title-ta := TouchArea { mouse-cursor: MouseCursor.pointer; clicked => { App.open-current-album(); } }
         }
-        if App.track-explicit: ExplicitMark { y: 0; size: 24px; ink: #ffffff80; }
+        if App.track-explicit: ExplicitMark { y: 0; size: 24px; ink: PlaybackTheme.muted; }
     }
     ArtistLinks {
         y: 448px;
@@ -208,8 +209,8 @@ component Poster inherits Rectangle {
         height: 24px;
         names: App.artist-list;
         font-size: Theme.font-size-label-l;
-        ink: #ffffff80;
-        ink-hover: #ffffffe6;
+        ink: PlaybackTheme.muted;
+        ink-hover: PlaybackTheme.ink;
         clicked(i) => { App.open-current-artist(i); }
     }
 
@@ -218,12 +219,12 @@ component Poster inherits Rectangle {
         y: 493px;
         height: 4px;
         border-radius: 2px;
-        background: #ffffff29;
+        background: PlaybackTheme.overlay.with-alpha(0.16);
         Rectangle {
             x: 0;
             width: parent.width * shown;
             border-radius: 2px;
-            background: seek.has-hover || seek.pressed ? Theme.controls-color-primary-default-enabled : #ffffffcc;
+            background: seek.has-hover || seek.pressed ? Theme.controls-color-primary-default-enabled : PlaybackTheme.overlay.with-alpha(0.8);
             animate background { duration: App.motion ? 150ms : 0ms; }
         }
     }
@@ -233,7 +234,7 @@ component Poster inherits Rectangle {
         text: App.format-time(shown * App.duration);
         font-size: Theme.font-size-label-s;
         font-weight: 500;
-        color: #ffffff80;
+        color: PlaybackTheme.muted;
     }
     if seek.has-hover || seek.pressed: Text {
         x: 408px;
@@ -241,7 +242,7 @@ component Poster inherits Rectangle {
         text: App.format-time(App.duration);
         font-size: Theme.font-size-label-s;
         font-weight: 500;
-        color: #ffffff80;
+        color: PlaybackTheme.muted;
     }
     seek := TouchArea {
         y: 487px;
@@ -282,7 +283,7 @@ component LyricsLoader inherits Rectangle {
         width: root.dot;
         height: root.dot;
         border-radius: root.dot / 2;
-        background: #e6e6e6;
+        background: PlaybackTheme.ink;
         opacity: (0.1 + 0.4 * k) * root.fade;
         transform-scale: 1 + 0.3 * (1 - abs(2 * k - 1));
     }
@@ -315,7 +316,7 @@ component LyricRow inherits Rectangle {
         font-family: "YS Music Headline";
         font-size: root.font-size;
         font-weight: 700;
-        color: #e6e6e6.with-alpha(root.alpha * root.fade);
+        color: PlaybackTheme.ink.with-alpha(root.alpha * root.fade);
     }
     TouchArea {
         enabled: root.clickable;
@@ -376,7 +377,7 @@ component SyncLyrics inherits Rectangle {
         font-family: "YS Music Headline";
         font-size: root.font;
         font-weight: 700;
-        color: #e6e6e6.with-alpha(0.5 * root.appear);
+        color: PlaybackTheme.ink.with-alpha(0.5 * root.appear);
     }
 
     list := VerticalLayout {
@@ -401,7 +402,7 @@ component SyncLyrics inherits Rectangle {
                 font-family: "YS Music Headline";
                 font-size: root.font;
                 font-weight: 700;
-                color: #e6e6e6.with-alpha(0.5 * root.appear);
+                color: PlaybackTheme.ink.with-alpha(0.5 * root.appear);
             }
         }
         for l[i] in App.lyrics: LyricRow {
@@ -432,7 +433,7 @@ component SyncLyrics inherits Rectangle {
                 horizontal-alignment: center;
                 font-size: max(16px, root.window-width * 0.0125);
                 font-weight: 500;
-                color: #ffffff.with-alpha(0.5 * root.appear);
+                color: PlaybackTheme.ink.with-alpha(0.5 * root.appear);
             }
             if App.lyrics-source != "": Text {
                 text: T.t("Источник: ") + App.lyrics-source;
@@ -440,7 +441,7 @@ component SyncLyrics inherits Rectangle {
                 horizontal-alignment: center;
                 font-size: max(16px, root.window-width * 0.0125);
                 font-weight: 500;
-                color: #ffffff.with-alpha(0.5 * root.appear);
+                color: PlaybackTheme.ink.with-alpha(0.5 * root.appear);
             }
         }
     }
@@ -450,19 +451,19 @@ component SyncLyrics inherits Rectangle {
         y: 0;
         height: 80px;
         cache-rendering-hint: App.motion;
-        background: @linear-gradient(180deg, App.tint 0%, App.tint.transparentize(1) 100%);
+        background: @linear-gradient(180deg, PlaybackTheme.tint 0%, PlaybackTheme.tint.transparentize(1) 100%);
     }
     Rectangle {
         y: parent.height - 80px;
         height: 80px;
         cache-rendering-hint: App.motion;
-        background: @linear-gradient(0deg, App.tint 0%, App.tint.transparentize(1) 100%);
+        background: @linear-gradient(0deg, PlaybackTheme.tint 0%, PlaybackTheme.tint.transparentize(1) 100%);
     }
 
 }
 
 export component FullscreenPlayer inherits Rectangle {
-    background: App.tint;
+    background: PlaybackTheme.tint;
     property <bool> side: App.fs-mode != 0;
     property <length> py: (self.height - 510px) / 2;
 
@@ -491,7 +492,7 @@ export component FullscreenPlayer inherits Rectangle {
             text: T.t("Сейчас играет ") + App.queue-header;
             font-size: Theme.font-size-label-m;
             font-weight: 500;
-            color: #ffffff;
+            color: PlaybackTheme.ink;
         }
         Text {
             x: 0;
@@ -502,7 +503,7 @@ export component FullscreenPlayer inherits Rectangle {
             font-family: "YS Music Headline";
             font-size: Theme.font-size-headline-m;
             font-weight: 700;
-            color: #ffffff;
+            color: PlaybackTheme.ink;
         }
         QueueRow {
             x: 0;
@@ -527,7 +528,7 @@ export component FullscreenPlayer inherits Rectangle {
             text: T.t("Далее в очереди");
             font-size: Theme.font-size-label-m;
             font-weight: 500;
-            color: #ffffff;
+            color: PlaybackTheme.ink;
         }
         for q[i] in App.queue: QueueRow {
             x: 0;
@@ -554,9 +555,9 @@ export component FullscreenPlayer inherits Rectangle {
         width: 48px;
         height: 48px;
         border-radius: 24px;
-        background: close-ta.has-hover ? #ffffff29 : #ffffff14;
+        background: close-ta.has-hover ? PlaybackTheme.overlay.with-alpha(0.16) : PlaybackTheme.overlay.with-alpha(0.08);
         animate background { duration: App.motion ? 150ms : 0ms; }
-        Icon { source: Icons.arrow-down; size: 24px; colorize: #ffffff; }
+        Icon { source: Icons.arrow-down; size: 24px; colorize: PlaybackTheme.ink; }
         close-ta := TouchArea {
             mouse-cursor: MouseCursor.pointer;
             clicked => { App.fullscreen = false; }
