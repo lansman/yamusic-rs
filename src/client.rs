@@ -57,7 +57,7 @@ pub fn device_header() -> &'static str {
 
 /// Токен уходит только по https и только на хосты Яндекса.
 pub fn token_allowed(url: &reqwest::Url) -> bool {
-    if url.scheme() != "https" {
+    if url.scheme() != "https" || url.port().is_some() || !url.username().is_empty() || url.password().is_some() {
         return false;
     }
     let Some(host) = url.host_str() else { return false };
@@ -98,6 +98,9 @@ mod tests {
         let ok = |s: &str| token_allowed(&reqwest::Url::parse(s).unwrap());
         assert!(ok("https://api.music.yandex.net/account/status"));
         assert!(ok("https://storage.mds.yandex.net/download-info/1"));
+        assert!(ok("https://api.music.yandex.net:443/account/status"));
+        assert!(!ok("https://api.music.yandex.net:8443/account/status"));
+        assert!(!ok("https://user@api.music.yandex.net/account/status"));
         assert!(!ok("http://api.music.yandex.net/"));
         assert!(!ok("https://evil.com/yandex.net"));
         assert!(!ok("https://yandex.net.evil.com/"));

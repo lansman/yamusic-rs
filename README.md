@@ -104,8 +104,13 @@
 > SHA-256 файла есть на странице релиза. Exe собирается на GitHub Actions прямо из исходников,
 > лог сборки открыт. Можно собрать и самим ([как это сделать](#сборка)).
 
-**Обновление.** Приложение раз в полчаса проверяет релизы на GitHub. Кнопка «Обновить» скачивает
-новый `yamusic-rs.exe`, сверяет его SHA-256 с релизом, заменяет старый файл и перезапускается.
+**Сборка форка.** Соберите `cargo build --locked --release` из исходников этого форка. Проверка
+обновлений и статус Discord по умолчанию выключены. При включении проверка обращается к релизам
+`lansman/yamusic-rs`.
+
+**Обновление.** Если проверка включена, приложение раз в полчаса проверяет релизы на GitHub.
+Кнопка «Обновить» скачивает новый `yamusic-rs.exe`, сверяет его SHA-256 с релизом, заменяет
+старый файл и перезапускается.
 Если папка закрыта для записи (например, `Program Files`), кнопка откроет страницу релиза,
 и файл можно заменить вручную.
 
@@ -171,22 +176,22 @@ AppImage монтирует себя через FUSE. Если пишет `Canno
 <br>
 
 Вход идёт по коду устройства через ya.ru/device, пароль приложение не видит. Полученный токен
-шифруется средствами Windows (DPAPI) и хранится в `%APPDATA%\yamusic-rs\config.json`. Расшифровать
-его может только ваша учётная запись Windows на этом компьютере.
+шифруется средствами Windows (DPAPI) и хранится в `%APPDATA%\yamusic-rs\config.json`. Приложения,
+запущенные под той же учётной записью, тоже могут расшифровать его через DPAPI.
 
 На Linux токен лежит в связке ключей (GNOME Keyring, KWallet или другая служба Secret Service),
-а в `~/.config/yamusic-rs/config.json` остаётся только имя записи. Если связки ключей нет, например
-в голом оконном менеджере, токен хранится в этом файле, который может читать только ваш пользователь.
+а в `~/.config/yamusic-rs/config.json` остаётся только имя записи. Если защищённое хранилище
+недоступно, токен остаётся в памяти и после перезапуска может потребоваться войти заново.
 
-Токен отправляется только по https и только на домены `yandex.ru` и `yandex.net`. Проверка
-встроена в код (`src/client.rs`). Кроме Яндекса приложение ходит только к `api.github.com`,
-чтобы проверить обновления, и к Discord на этом же компьютере (локальный канал), если включён
-статус. Аналитики и телеметрии нет. Проверку обновлений можно выключить в настройках.
+Токен отправляется по HTTPS на домены `yandex.ru` и `yandex.net`. Запросы входа и обновления
+токена идут напрямую к `oauth.yandex.ru`. Клиент запрашивает у Яндекса чтение и изменение
+данных Музыки. При включении статуса текущий трек и исполнитель передаются локальному клиенту Discord.
 
 Если вы больше не доверяете приложению или потеряли компьютер, токен можно отозвать: на
 [id.yandex.ru](https://id.yandex.ru/security) в разделе «Безопасность» откройте «Входы и устройства»
 и выйдите на нужном устройстве или сразу на всех. После этого токен перестанет работать, а RS
-попросит войти заново. Выход из аккаунта в самом RS только стирает токен с компьютера.
+попросит войти заново. При выходе RS удаляет локальные токены и запрашивает у Яндекса отзыв
+токена доступа.
 </details>
 
 <details>
@@ -443,7 +448,7 @@ uses about 65 MB in one process.
 
 - **Windows:** download `yamusic-rs.exe` from the [latest release](https://github.com/SpolzerMod/yamusic-rs/releases/latest)
   and run it; there is no installer. Sign in with the code shown at [ya.ru/device](https://ya.ru/device).
-  The app updates itself from GitHub releases.
+  For this fork, build the executable from source. Update checks and Discord presence are opt-in.
 - **Linux (beta):** the release has a `.deb` (Debian, Ubuntu, Mint), an `.rpm` (Fedora, openSUSE)
   and an AppImage for everything else; a [`PKGBUILD`](packaging/aur/PKGBUILD) is available for Arch.
   Needs glibc 2.35 or newer. Sound goes through PipeWire, PulseAudio or ALSA, media keys and
@@ -453,9 +458,9 @@ uses about 65 MB in one process.
 - **macOS port:** a third-party port is available at [rnikitin/yamusic-rs](https://github.com/rnikitin/yamusic-rs).
   It is a separate project based on this code. This project does not take part in its development
   and does not test its builds; its author is responsible for its security and support.
-- **Privacy:** the token is encrypted with Windows DPAPI or kept in the Linux keyring (Secret Service)
-  and only sent over HTTPS to `yandex.ru` / `yandex.net`. Besides Yandex, the app only talks to
-  `api.github.com` (update checks) and the local Discord client (optional status). There is no telemetry.
+- **Privacy:** the token is encrypted with Windows DPAPI or kept in the Linux keyring (Secret Service).
+  When protected storage is unavailable, the token stays in memory. Requests carrying the token use
+  HTTPS to `yandex.ru` / `yandex.net`.
 - **Build:** Rust 1.92+, then `cargo build --release`. On Windows you need MSVC Build Tools with the
   Windows SDK, on Linux a C toolchain and the `-dev` packages listed in the Russian section above.
 - **Bugs:** open an [issue](https://github.com/SpolzerMod/yamusic-rs/issues/new/choose) with the app

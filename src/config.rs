@@ -17,9 +17,8 @@ pub struct Config {
     token_sealed: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     refresh_sealed: Option<String>,
-    /// Токен открытым текстом: старый формат или Linux без связки ключей. Как только спрятать есть
-    /// куда, при запуске переносится туда.
-    #[serde(rename = "token", skip_serializing_if = "Option::is_none")]
+    /// Read legacy plaintext tokens once so they can be migrated to protected storage.
+    #[serde(rename = "token", skip_serializing)]
     token_plain: Option<String>,
     /// Unix-время, когда токен истечёт.
     pub token_expires: Option<u64>,
@@ -75,7 +74,7 @@ impl Default for Config {
             token_plain: None,
             token_expires: None,
             volume: 0.6,
-            discord_enabled: true,
+            discord_enabled: false,
             discord_app_id: String::new(),
             theme: "system".into(),
             quality: 0,
@@ -89,7 +88,7 @@ impl Default for Config {
             download_dir: String::new(),
             download_flac: false,
             hidden_blocks: Vec::new(),
-            check_updates: true,
+            check_updates: false,
             allow_explicit: true,
             window_pos: None,
             window_size: None,
@@ -138,8 +137,8 @@ impl Config {
         if c.token.is_none() && c.token_sealed.is_some() {
             log("сохранённый токен не прочитался (другая учётная запись, связка ключей заперта или в ней нет записи?) — нужно войти заново");
         }
-        if let Some(plain) = c.token_plain.clone().filter(|t| !t.trim().is_empty()) {
-            if c.token.is_none() {
+        if let Some(plain) = c.token_plain.take() {
+            if c.token.is_none() && !plain.trim().is_empty() {
                 c.token = Some(plain.trim().to_string());
             }
             // Открытый токен с диска убираем сразу.
@@ -159,8 +158,9 @@ impl Config {
         if let Some(t) = &self.refresh_token {
             disk.refresh_sealed = crate::secret::seal("refresh", t);
         }
-        // Спрятать некуда (Linux без связки ключей) — открытым текстом, в файле только для владельца.
-        disk.token_plain = if disk.token_sealed.is_none() { self.token.clone() } else { None };
+        if (self.token.is_some() && disk.token_sealed.is_none()) || (self.refresh_token.is_some() && disk.refresh_sealed.is_none()) {
+            log("защищённое хранилище недоступно: часть данных входа сохранится только до закрытия приложения");
+        }
         if let Ok(s) = serde_json::to_string_pretty(&disk) {
             let path = dir().join("config.json");
             let tmp = dir().join("config.json.tmp");
@@ -184,8 +184,7 @@ impl Config {
     }
 }
 
-/// На Linux без связки ключей токен лежит открытым текстом, поэтому файл сразу создаётся
-/// только для владельца, а не получает права после записи.
+/// Create the settings file with owner-only permissions on Unix.
 fn write_private(path: &std::path::Path, data: &[u8]) -> std::io::Result<()> {
     use std::io::Write;
     let mut o = std::fs::OpenOptions::new();
@@ -237,5 +236,33 @@ pub fn now_secs() -> u64 {
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_secs())
         .unwrap_or(0)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn legacy_token_is_read_but_never_serialized() {
+        let mut cfg: Config = serde_json::from_str(r#"{"token":"test-legacy-token"}"#).unwrap();
+        assert_eq!(cfg.token_plain.as_deref(), Some("test-legacy-token"));
+        cfg.token = Some("test-access-token".into());
+        cfg.refresh_token = Some("test-refresh-token".into());
+        let disk = serde_json::to_string(&cfg).unwrap();
+        for token in ["test-legacy-token", "test-access-token", "test-refresh-token"] {
+            assert!(!disk.contains(token));
+        }
+        assert!(!disk.contains("\"token\":"));
+    }
+
+    #[test]
+    fn optional_integrations_respect_saved_preferences() {
+        let fresh = Config::default();
+        assert!(!fresh.discord_enabled);
+        assert!(!fresh.check_updates);
+        let saved: Config = serde_json::from_str(r#"{"discord_enabled":true,"check_updates":true}"#).unwrap();
+        assert!(saved.discord_enabled);
+        assert!(saved.check_updates);
+    }
 }
 

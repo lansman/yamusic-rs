@@ -31,6 +31,9 @@ pub enum Poll {
 
 fn client() -> reqwest::blocking::Client {
     reqwest::blocking::Client::builder()
+        .https_only(true)
+        // OAuth forms carry secrets in the body, which a 307 or 308 would resend.
+        .redirect(reqwest::redirect::Policy::none())
         .timeout(Duration::from_secs(20))
         .connect_timeout(Duration::from_secs(10))
         .build()
@@ -39,8 +42,12 @@ fn client() -> reqwest::blocking::Client {
 
 fn post(form: &[(&str, &str)], path: &str) -> Result<Value, String> {
     let resp = client().post(format!("{OAUTH_BASE}{path}")).form(form).send().map_err(|e| format!("сеть: {}", crate::config::chain(&e)))?;
-    let text = resp.text().map_err(|e| format!("сеть: {}", crate::config::chain(&e)))?;
-    serde_json::from_str(&text).map_err(|_| format!("ответ OAuth: {}", text.chars().take(200).collect::<String>()))
+    let status = resp.status();
+    if status.is_redirection() {
+        return Err(format!("неожиданное перенаправление OAuth (HTTP {status})"));
+    }
+    // Error responses can contain credential material. Keep their bodies out of diagnostics.
+    resp.json().map_err(|_| format!("некорректный ответ OAuth (HTTP {status})"))
 }
 
 /// Постоянный id устройства: Яндекс показывает его в списке устройств аккаунта.
@@ -80,7 +87,7 @@ pub fn device_code() -> Result<DeviceCode, String> {
             interval: n("interval").unwrap_or(5).max(1),
             expires_in: n("expires_in").unwrap_or(300),
         }),
-        _ => Err(s("error_description").unwrap_or_else(|| "Яндекс не выдал код входа".into())),
+        _ => Err("Яндекс не выдал код входа".into()),
     }
 }
 
@@ -111,9 +118,7 @@ pub fn poll(device_code: &str) -> Poll {
     }
     match v.get("error").and_then(|e| e.as_str()) {
         Some("authorization_pending") | Some("slow_down") => Poll::Pending,
-        _ => Poll::Failed(
-            v.get("error_description").and_then(|e| e.as_str()).unwrap_or("вход не удался").to_string(),
-        ),
+        _ => Poll::Failed("Яндекс отклонил запрос на вход".into()),
     }
 }
 
@@ -126,7 +131,7 @@ pub fn revoke(access: &str) -> Result<(), String> {
     if v.get("status").and_then(|s| s.as_str()) == Some("ok") {
         Ok(())
     } else {
-        Err(v.get("error_description").and_then(|e| e.as_str()).unwrap_or("Яндекс не отозвал токен").to_string())
+        Err("Яндекс не отозвал токен".into())
     }
 }
 
@@ -141,5 +146,5 @@ pub fn refresh(refresh_token: &str) -> Result<Token, String> {
         ],
         "/token",
     )?;
-    token_from(&v).ok_or_else(|| v.get("error_description").and_then(|e| e.as_str()).unwrap_or("не удалось продлить вход").to_string())
+    token_from(&v).ok_or_else(|| "не удалось продлить вход".into())
 }

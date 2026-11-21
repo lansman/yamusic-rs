@@ -5,8 +5,7 @@
 #[cfg(windows)]
 use base64::Engine as _;
 
-/// Дополнительная «соль» DPAPI: другие программы того же пользователя без неё не расшифруют.
-/// Старое имя оставлено намеренно: с другой солью сохранённые токены перестанут читаться.
+/// Public DPAPI entropy retained for compatibility with existing encrypted tokens.
 #[cfg(windows)]
 const ENTROPY: &[u8] = b"yamusic-lite token v1";
 
@@ -82,7 +81,7 @@ mod keyring {
             Ok(ss) => ss,
             Err(e) => {
                 MISSING.store(true, Ordering::Relaxed);
-                log(format!("связка ключей недоступна, токен останется в config.json: {e}"));
+                log(format!("связка ключей недоступна: {e}"));
                 return None;
             }
         };

@@ -867,6 +867,8 @@ fn short(s: &str) -> String {
 impl Api {
     pub fn new(token: &str) -> Self {
         let http = Client::builder()
+            .https_only(true)
+            .referer(false)
             .timeout(Duration::from_secs(120))
             .connect_timeout(Duration::from_secs(10))
             .user_agent("Yandex-Music-API")

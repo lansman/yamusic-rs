@@ -1545,9 +1545,6 @@ pub fn run(start_hidden: bool) -> Result<(), slint::PlatformError> {
     crate::api::ALLOW_EXPLICIT.store(cfg.allow_explicit, Ordering::Relaxed);
     let player = Player::spawn(notifier());
     player.send(Cmd::Volume(cfg.volume));
-    if let Some(t) = cfg.token.clone() {
-        player.send(Cmd::Login(t));
-    }
 
     let tracks = Rc::new(VecModel::<TrackItem>::default());
     let app = ui.global::<App>();
@@ -1650,10 +1647,11 @@ pub fn run(start_hidden: bool) -> Result<(), slint::PlatformError> {
         }),
     });
     CTX.with(|c| *c.borrow_mut() = Some(ctx.clone()));
-    if ctx.st.borrow().cfg.token.is_none() {
-        ctx.login_start();
+    let saved_token = ctx.st.borrow().cfg.token.clone();
+    if let Some(token) = saved_token {
+        ctx.resume_saved_login(token);
     } else {
-        ctx.refresh_token_if_needed();
+        ctx.login_start();
     }
 
     let p = player.clone();
@@ -2298,6 +2296,9 @@ impl Ctx {
             let set = move |code: String, err: String| {
                 let w = weak.clone();
                 let _ = slint::invoke_from_event_loop(move || {
+                    if GEN.load(Ordering::SeqCst) != gen {
+                        return;
+                    }
                     if let Some(ui) = w.upgrade() {
                         let app = ui.global::<App>();
                         let chars: Vec<SharedString> = code.chars().map(|c| SharedString::from(c.to_string())).collect();
@@ -2322,7 +2323,11 @@ impl Ctx {
                     crate::auth::Poll::Pending => continue,
                     crate::auth::Poll::Failed(e) => return set(String::new(), format!("Вход не удался: {e}")),
                     crate::auth::Poll::Done(t) => {
-                        let _ = slint::invoke_from_event_loop(move || with_ctx(|c| c.login_done(t)));
+                        let _ = slint::invoke_from_event_loop(move || {
+                            if GEN.load(Ordering::SeqCst) == gen {
+                                with_ctx(|c| c.login_done(t));
+                            }
+                        });
                         return;
                     }
                 }
@@ -2337,9 +2342,10 @@ impl Ctx {
         {
             let mut st = self.st.borrow_mut();
             st.cfg.token = Some(t.access.clone());
-            if t.refresh.is_some() {
-                st.cfg.refresh_token = t.refresh;
+            if t.refresh.is_none() {
+                st.cfg.forget_refresh();
             }
+            st.cfg.refresh_token = t.refresh;
             st.cfg.token_expires = t.expires_in.map(|s| crate::config::now_secs() + s);
             st.cfg.save();
         }
@@ -2350,31 +2356,44 @@ impl Ctx {
         self.player.send(Cmd::Login(t.access));
     }
 
-    /// Токен живёт около года: за месяц до конца продлеваем его в фоне.
-    fn refresh_token_if_needed(self: &Rc<Self>) {
+    /// Renew expiring credentials before creating API clients for the session.
+    fn resume_saved_login(self: &Rc<Self>, token: String) {
         let (refresh, expires) = {
             let st = self.st.borrow();
             (st.cfg.refresh_token.clone(), st.cfg.token_expires)
         };
-        let (Some(refresh), Some(expires)) = (refresh, expires) else { return };
-        if expires > crate::config::now_secs() + 30 * 86400 {
+        let Some(refresh) = refresh.filter(|_| expires.is_some_and(|s| s <= crate::config::now_secs() + 30 * 86400)) else {
+            self.player.send(Cmd::Login(token));
             return;
-        }
-        std::thread::spawn(move || match crate::auth::refresh(&refresh) {
-            Ok(t) => {
-                let _ = slint::invoke_from_event_loop(move || {
-                    with_ctx(|c| {
+        };
+        std::thread::spawn(move || {
+            let result = crate::auth::refresh(&refresh);
+            let _ = slint::invoke_from_event_loop(move || {
+                with_ctx(|c| {
+                    let active_token = {
                         let mut st = c.st.borrow_mut();
-                        st.cfg.token = Some(t.access);
-                        if t.refresh.is_some() {
-                            st.cfg.refresh_token = t.refresh;
+                        if st.cfg.token.as_deref() != Some(token.as_str()) || st.cfg.refresh_token.as_deref() != Some(refresh.as_str()) {
+                            return;
                         }
-                        st.cfg.token_expires = t.expires_in.map(|s| crate::config::now_secs() + s);
-                        st.cfg.save();
-                    })
+                        match result {
+                            Ok(t) => {
+                                st.cfg.token = Some(t.access.clone());
+                                if t.refresh.is_some() {
+                                    st.cfg.refresh_token = t.refresh;
+                                }
+                                st.cfg.token_expires = t.expires_in.map(|s| crate::config::now_secs() + s);
+                                st.cfg.save();
+                                t.access
+                            }
+                            Err(e) => {
+                                log(format!("продление токена: {e}"));
+                                token
+                            }
+                        }
+                    };
+                    c.player.send(Cmd::Login(active_token));
                 });
-            }
-            Err(e) => log(format!("продление токена: {e}")),
+            });
         });
     }
 
